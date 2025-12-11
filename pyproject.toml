@@ -3,7 +3,7 @@ name = "vectorgraph"
 version = "0.1.0"
 description = "Minimal Postgres stack combining Apache AGE graph + pgvector with simple async helpers."
 authors = [
-  { name = "QuixiAI" }
+  {name = "Eric Hartford"}
 ]
 requires-python = ">=3.10"
 readme = "README.md"

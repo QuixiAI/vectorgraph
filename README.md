@@ -3,14 +3,14 @@
 A minimal, batteries-included PostgreSQL stack that pairs Apache AGE (graph) with pgvector. Spin it up with Docker, hit a couple of Python helpers, and you have graph + vector storage in one place.
 
 ## 60-second start
-1. Copy env: `cp .env.example .env`
-2. Bring up services: `vectorgraph up` (uses Docker; falls back to `docker compose up -d` with cached stack files)
+1. Install: `pipx install .` (or `pip install .` in a venv)
+2. Bring up services: `vectorgraph up` (Docker compose stack with graph/vector)
 3. Run tests: `pytest -q`
-4. Tinker in Python (see below), or connect to Postgres on `localhost:5432`.
+4. Tinker in Python (see below) or run `vectorgraph demo` then `python demo.py`.
 
 Install options:
 - `pipx install .` (recommended for CLI) or `pip install .` in a venv.
-- CLI commands: `vectorgraph up`, `vectorgraph down`, `vectorgraph logs -f`, `vectorgraph ps`.
+- CLI commands: `vectorgraph up`, `vectorgraph down`, `vectorgraph logs -f`, `vectorgraph ps`, `vectorgraph demo`.
 
 ## Python quickstart
 ```python
@@ -42,15 +42,14 @@ More complete example: `python examples/demo.py` (creates types/entities/relatio
 - `vectorgraph/stack/` — packaged `docker-compose.yml`, `Dockerfile`, `schema.sql` used by the CLI.
 
 ## Environment
-`POSTGRES_*` are read by both the Python helpers and the Docker stack. The CLI prefers `.env` in your current directory; if absent, it will use one in its cache directory (`~/.cache/vectorgraph/stack/`) if present. The embedding container sits on a private Docker network (no host port) and is reachable from Postgres at `http://embeddings:80`.
+Defaults are baked into the stack; you normally don’t need to touch `.env`. If a `.env` exists in your project root, `vectorgraph up` will copy it into its cache and use it; otherwise it uses the packaged defaults. The embedding container sits on a private Docker network (no host port) and is reachable from Postgres at `http://embeddings:80`.
 
 ## Typical flow
-- `docker compose up -d`
-- run Python code using the helpers
+- `vectorgraph up`
+- run Python code using the helpers (or `vectorgraph demo` then `python demo.py`)
 - `pytest -q` to sanity check
-- `docker compose down -v` when done (drops volumes)
+- `vectorgraph down` when done
 
 ## Notes
 - Vectors are fixed at 768-dim; the TEI model (`unsloth/embeddinggemma-300m`) matches that.
 - Each call to `create_db()` makes a dedicated AGE graph + vector table keyed by UUID to keep tests isolated.
-```
