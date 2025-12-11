@@ -37,17 +37,14 @@ Install into your app (no CLI needed if you already run Postgres/AGE/pgvector):
 ```
 pip install vectorgraph
 ```
-Minimal usage (async):
+Minimal usage (sync helpers):
 ```python
-import asyncio
-from vectorgraph import vector_add, vector_nearest_neighbors, create_db
+from vectorgraph import sync as vg
 
-async def main():
-    db_id = await create_db()
-    await vector_add(db_id, "id1", [0.1]*768, {"tag": "demo"})
-    print(await vector_nearest_neighbors(db_id, [0.1]*768, k=1))
-
-asyncio.run(main())
+db_id = vg.create_db()
+vg.vector_add(db_id, "id1", [0.1]*768, {"tag": "demo"})
+print(vg.vector_nearest_neighbors(db_id, [0.1]*768, k=1))
+vg.delete_db(db_id)
 ```
 Env vars respected by the helpers: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`. If you’re pointing at an existing stack, set these to your running Postgres/AGE instance.
 
