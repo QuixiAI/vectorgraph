@@ -1,0 +1,57 @@
+services:
+  db:
+    build: .
+    container_name: vg_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vg_db}
+      POSTGRES_USER: ${POSTGRES_USER:-vg_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vg_password}
+      POSTGRES_HOST_AUTH_METHOD: trust 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vg_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "5432:5432"
+    command: ["postgres", "-c", "search_path=ag_catalog,\"$user\",public"]
+    networks:
+      - public
+      - private
+
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    container_name: vg_embeddings
+    platform: linux/amd64
+    command: 
+      - --model-id
+      - unsloth/embeddinggemma-300m
+      - --dtype
+      - float32
+    expose:
+      - "80"  # internal-only; add ports mapping if you need host access
+    volumes:
+      - embeddings_cache:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - private
+
+volumes:
+  postgres_data:
+  embeddings_cache:
+
+networks:
+  private:
+    internal: true
+  public:
