@@ -7,6 +7,7 @@ Example usage of the graph/vector helpers in a realistic flow:
 5) traverse and compute similarity
 6) clean up
 """
+import argparse
 import asyncio
 import uuid
 from vectorgraph import (
@@ -24,13 +25,14 @@ from vectorgraph import (
     vector_nearest_neighbors,
     vector_query_by_id,
 )
+from vectorgraph import sync as vg_sync
 
 
 def make_vec(v: float) -> list[float]:
     return [v] * 768
 
 
-async def main() -> None:
+async def run_async() -> None:
     db_id = await create_db()
     print(f"Created graph/vector namespace: {db_id}")
 
@@ -95,5 +97,57 @@ async def main() -> None:
     print("Deleted graph/vector namespace:", db_id)
 
 
+def run_sync() -> None:
+    db_id = vg_sync.create_db()
+    print(f"Created graph/vector namespace: {db_id}")
+
+    alice_id = str(uuid.uuid4())
+    acme_id = str(uuid.uuid4())
+    bob_id = str(uuid.uuid4())
+
+    vg_sync.graph_create_type(db_id, "Person")
+    vg_sync.graph_create_type(db_id, "Company")
+
+    vg_sync.graph_create_entity(db_id, alice_id, "Alice", "Engineer at ACME")
+    vg_sync.graph_create_entity(db_id, acme_id, "ACME", "A rocket company")
+    vg_sync.graph_create_entity(db_id, bob_id, "Bob", "Designer at ACME")
+
+    vg_sync.graph_assign_type(db_id, alice_id, "Person")
+    vg_sync.graph_assign_type(db_id, bob_id, "Person")
+    vg_sync.graph_assign_type(db_id, acme_id, "Company")
+
+    vg_sync.graph_create_relationship(db_id, alice_id, acme_id, "EMPLOYED_AT", since="2022")
+    vg_sync.graph_create_relationship(db_id, bob_id, acme_id, "EMPLOYED_AT", since="2021")
+    vg_sync.graph_create_relationship(db_id, alice_id, bob_id, "COLLABORATES_WITH", project="Design")
+
+    vg_sync.vector_add(db_id, alice_id, make_vec(0.1), {"name": "Alice", "team": "eng"})
+    vg_sync.vector_add(db_id, bob_id, make_vec(0.11), {"name": "Bob", "team": "design"})
+    vg_sync.vector_add(db_id, acme_id, make_vec(0.5), {"name": "ACME", "team": "org"})
+
+    neighbors = vg_sync.vector_nearest_neighbors(db_id, make_vec(0.1), k=2)
+    print("Nearest to Alice vector:", neighbors)
+
+    design_only = vg_sync.vector_nearest_neighbors(db_id, make_vec(0.11), k=2, metadata_filter={"team": "design"})
+    print("Design-only neighbors:", design_only)
+
+    bob_neighbors = vg_sync.vector_query_by_id(db_id, bob_id, k=2)
+    print("Neighbors of Bob (by id):", bob_neighbors)
+
+    collaborators = vg_sync.graph_neighbors(db_id, alice_id, depth=1, relation="COLLABORATES_WITH")
+    print("Alice collaborators:", collaborators)
+
+    sim = vg_sync.graph_similarity(db_id, alice_id, bob_id, depth=2)
+    print("Graph similarity Alice/Bob:", sim)
+
+    vg_sync.delete_db(db_id)
+    print("Deleted graph/vector namespace:", db_id)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="VectorGraph demo (async by default, sync with --sync)")
+    parser.add_argument("--sync", action="store_true", help="Run the synchronous demo")
+    args = parser.parse_args()
+    if args.sync:
+        run_sync()
+    else:
+        asyncio.run(run_async())

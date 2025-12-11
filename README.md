@@ -11,6 +11,7 @@ A minimal, batteries-included PostgreSQL stack that pairs Apache AGE (graph) wit
 Install options:
 - `pipx install .` (recommended for CLI) or `pip install .` in a venv.
 - CLI commands: `vectorgraph up`, `vectorgraph down`, `vectorgraph logs -f`, `vectorgraph ps`, `vectorgraph demo`.
+  - Prefer async API for apps; sync helpers are available at `vectorgraph.sync` (see async/sync combined demo).
 
 ## Python quickstart
 ```python
@@ -29,7 +30,26 @@ async def main():
 
 asyncio.run(main())
 ```
-More complete example: `python examples/demo.py` (creates types/entities/relationships, vectors, queries, and cleans up).
+Combined example: `python examples/demo.py` (async flow) and `python examples/demo.py --sync` (sync via `vectorgraph.sync`).
+
+## Use as a library
+Install into your app (no CLI needed if you already run Postgres/AGE/pgvector):
+```
+pip install vectorgraph
+```
+Minimal usage (async):
+```python
+import asyncio
+from vectorgraph import vector_add, vector_nearest_neighbors, create_db
+
+async def main():
+    db_id = await create_db()
+    await vector_add(db_id, "id1", [0.1]*768, {"tag": "demo"})
+    print(await vector_nearest_neighbors(db_id, [0.1]*768, k=1))
+
+asyncio.run(main())
+```
+Env vars respected by the helpers: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`. If you’re pointing at an existing stack, set these to your running Postgres/AGE instance.
 
 ## Files
 - `db.py` — public async API for graph + vector helpers (AGE + pgvector).

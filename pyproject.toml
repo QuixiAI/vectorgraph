@@ -1,6 +1,6 @@
 [project]
 name = "vectorgraph"
-version = "0.1.2"
+version = "0.1.3"
 description = "Minimal Postgres stack combining Apache AGE graph + pgvector with simple async helpers."
 authors = [
   {name = "Eric Hartford"}
