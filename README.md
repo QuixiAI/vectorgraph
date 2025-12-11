@@ -2,6 +2,17 @@
 
 A minimal, batteries-included PostgreSQL stack that pairs Apache AGE (graph) with pgvector. Spin it up with Docker, hit a couple of Python helpers, and you have graph + vector storage in one place.
 
+## Why VectorGraph
+- One Postgres for semantic search + graph traversals + SQL filters.
+- Native cross-paradigm joins: vector narrows, SQL governs, graph explains—no cross-service stitching.
+- Zero glue: packaged Docker stack, async helpers, sync shims.
+- Lighter than a separate graph DB (e.g., Neo4j) and adds graph + vector in one place (SQLite has vector extensions but no graph model).
+
+## How it compares
+- **Neo4j + vector service**: heavier ops, separate datastore, new query surface. VectorGraph stays in Postgres (AGE + pgvector) with one DSN and compose stack.
+- **SQLite + vector extensions**: small and simple, but lacks a graph model or graph queries. VectorGraph gives graph + vector + SQL in one.
+- **LLM app glue stacks**: avoid “smash across services” joins (Pinecone/Faiss + Neo4j + SQL filter). VectorGraph keeps the join native inside Postgres.
+
 ## 60-second start
 1. Install: `pip install vectorgraph` (or `pipx install vectorgraph`)
 2. Bring up services: `vectorgraph up` (Docker compose stack with graph/vector)
@@ -31,6 +42,48 @@ async def main():
 asyncio.run(main())
 ```
 Combined example: `python examples/demo.py` (async flow) and `python examples/demo.py --sync` (sync via `vectorgraph.sync`).
+
+## Cross-paradigm join in one query path
+Vector → SQL → graph, all in Postgres:
+```
+[vector search] -> candidate ids
+         | (join on id)
+[SQL filters] -> compliant set
+         | (neighbors/paths)
+[graph traversal] -> context & explanations
+```
+```python
+import os, uuid, asyncpg
+from vectorgraph import create_db, delete_db, graph_create_entity, graph_create_relationship, vector_add, vector_nearest_neighbors
+# For a one-call flow, use vectorgraph.cross_join_query(db, vector=..., table=..., where=..., include_neighbors=True)
+
+db = await create_db()
+alice, bob, acme = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+
+await graph_create_entity(db, alice, "Alice", "Designer NA")
+await graph_create_entity(db, bob, "Bob", "Engineer EU")
+await graph_create_entity(db, acme, "ACME", "Rocket Co")
+await graph_create_relationship(db, alice, acme, "EMPLOYED_AT")
+await graph_create_relationship(db, bob, acme, "EMPLOYED_AT")
+await vector_add(db, alice, [0.1]*768, {"name": "Alice"})
+await vector_add(db, bob, [0.11]*768, {"name": "Bob"})
+
+conn = await asyncpg.connect(os.getenv("DATABASE_URL", "postgresql://vg_user:vg_password@127.0.0.1:5432/vg_db"))
+await conn.execute(f"CREATE TABLE people_{db} (id uuid primary key, region text)")
+await conn.execute(f"INSERT INTO people_{db} VALUES ($1,'NA'), ($2,'EU')", alice, bob)
+
+candidates = await vector_nearest_neighbors(db, [0.1]*768, k=5)
+ids = [row["id"] for row in candidates]
+na_ids = await conn.fetchval(f"SELECT ARRAY(SELECT id FROM people_{db} WHERE region = 'NA' AND id = ANY($1))", ids)
+print("Nearest in NA:", na_ids)
+await delete_db(db)
+await conn.close()
+```
+
+## Ops footprint
+- One Docker compose: Postgres 16 with AGE + pgvector + http, and a TEI embedding container (internal network).
+- Typical local pull size: Postgres base image (~250–300MB) plus AGE/pgvector layers; fine for laptop/CI.
+- Single DSN for everything; no extra services beyond the embedding sidecar.
 
 ## Use as a library
 Install into your app (no CLI needed if you already run Postgres/AGE/pgvector):

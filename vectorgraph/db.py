@@ -4,6 +4,7 @@ import json
 import asyncio
 import weakref
 from typing import Optional, Any, Iterable, Sequence
+import re
 
 import asyncpg
 from dotenv import load_dotenv
@@ -805,6 +806,83 @@ async def vector_query_by_id(
         db_id, anchor["vector"], k=k + 1, metadata_filter=metadata_filter, include_vector=include_vector
     )
     return [n for n in neighbors if n["id"] != id][:k]
+
+
+def _validate_column(name: str) -> str:
+    """
+    Ensure we only allow simple identifier columns to avoid injection when building SQL.
+    """
+    if not name or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+        raise ValueError(f"Invalid column name '{name}'")
+    return name
+
+
+async def cross_join_query(
+    db_id: str,
+    *,
+    vector: Optional[Sequence[float]] = None,
+    source_id: Optional[str] = None,
+    k: int = 10,
+    table: Optional[str] = None,
+    where: Optional[dict] = None,
+    include_neighbors: bool = True,
+    depth: int = 1,
+    relation: Optional[str] = None,
+    include_vector: bool = False,
+) -> list[dict]:
+    """
+    Native vector -> SQL -> graph flow:
+    - vector search to get candidates
+    - optional SQL filter on a relational table by id + predicates
+    - optional graph neighbors for the surviving ids
+    """
+    if vector is None and source_id is None:
+        raise ValueError("Provide either 'vector' or 'source_id'")
+    anchor_vector = vector
+    if anchor_vector is None and source_id:
+        anchor_row = await vector_get(db_id, source_id, include_vector=True)
+        if not anchor_row or "vector" not in anchor_row:
+            return []
+        anchor_vector = anchor_row["vector"]
+
+    base_hits = await vector_nearest_neighbors(
+        db_id, anchor_vector, k=k, metadata_filter=None, include_vector=include_vector
+    )
+    if not base_hits:
+        return []
+
+    filtered_hits = base_hits
+    relational_rows: dict[str, dict[str, Any]] = {}
+    if table:
+        table_name = _quote_ident(_validate_column(table))
+        candidate_ids = [hit["id"] for hit in base_hits]
+        pool = await _get_pool()
+        clauses = [f'id = ANY($1::uuid[])']
+        params: list[Any] = [candidate_ids]
+        if where:
+            for key, val in where.items():
+                _validate_column(key)
+                params.append(val)
+                clauses.append(f'{_quote_ident(key)} = ${len(params)}')
+        sql = f'SELECT * FROM {table_name} WHERE ' + " AND ".join(clauses)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+        relational_rows = {str(row["id"]): dict(row) for row in rows}
+        filtered_hits = [hit for hit in base_hits if hit["id"] in relational_rows]
+
+    if include_neighbors and filtered_hits:
+        for hit in filtered_hits:
+            hit["neighbors"] = await graph_neighbors(
+                db_id, hit["id"], depth=depth, relation=relation
+            )
+
+    results = []
+    for hit in filtered_hits:
+        item = dict(hit)
+        if relational_rows:
+            item["sql_row"] = relational_rows.get(hit["id"])
+        results.append(item)
+    return results
 
 
 async def vector_batch_add(

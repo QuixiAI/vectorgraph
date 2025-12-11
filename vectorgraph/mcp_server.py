@@ -24,6 +24,7 @@ from vectorgraph import (
     vector_get,
     vector_nearest_neighbors,
     vector_query_by_id,
+    cross_join_query,
 )
 
 # Honor .env when present so the server connects to the right Postgres instance.
@@ -189,6 +190,27 @@ TOOLS: List[Tool] = [
         },
     ),
     _tool(
+        "cross_join_query",
+        "Vector -> SQL -> graph flow: vector search, optional SQL filter on a table, optional graph neighbors.",
+        {
+            "type": "object",
+            "properties": {
+                "db_id": {"type": "string"},
+                "vector": {"type": "array", "items": {"type": "number"}, "minItems": 768, "maxItems": 768},
+                "source_id": {"type": "string", "description": "Use this row's vector if 'vector' is not provided."},
+                "k": {"type": "integer", "minimum": 1, "maximum": 200, "default": 10},
+                "table": {"type": "string", "description": "Relational table to filter/join by id."},
+                "where": {"type": "object", "description": "Equality predicates for the table (column: value)."},
+                "include_neighbors": {"type": "boolean", "default": True},
+                "depth": {"type": "integer", "minimum": 1, "maximum": 5, "default": 1},
+                "relation": {"type": ["string", "null"]},
+                "include_vector": {"type": "boolean", "default": False},
+            },
+            "required": ["db_id"],
+            "additionalProperties": False,
+        },
+    ),
+    _tool(
         "vector_batch_add",
         "Insert or upsert multiple vectors.",
         {
@@ -327,6 +349,19 @@ async def _dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             _require(args, "id", name),
             k=args.get("k", 10),
             metadata_filter=args.get("metadata_filter"),
+            include_vector=args.get("include_vector", False),
+        )
+    if name == "cross_join_query":
+        return await cross_join_query(
+            _require(args, "db_id", name),
+            vector=args.get("vector"),
+            source_id=args.get("source_id"),
+            k=args.get("k", 10),
+            table=args.get("table"),
+            where=args.get("where"),
+            include_neighbors=args.get("include_neighbors", True),
+            depth=args.get("depth", 1),
+            relation=args.get("relation"),
             include_vector=args.get("include_vector", False),
         )
     if name == "vector_batch_add":

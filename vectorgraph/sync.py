@@ -51,3 +51,31 @@ def vector_nearest_neighbors(db_id: str, vector, k: int = 10, metadata_filter: d
 
 def vector_query_by_id(db_id: str, id: str, k: int = 10, metadata_filter: dict | None = None, include_vector: bool = False) -> list[dict]:
     return _run(adb.vector_query_by_id, db_id, id, k=k, metadata_filter=metadata_filter, include_vector=include_vector)
+
+
+def cross_join_query(
+    db_id: str,
+    *,
+    vector=None,
+    source_id: str | None = None,
+    k: int = 10,
+    table: str | None = None,
+    where: dict | None = None,
+    include_neighbors: bool = True,
+    depth: int = 1,
+    relation: str | None = None,
+    include_vector: bool = False,
+) -> list[dict]:
+    return _run(
+        adb.cross_join_query,
+        db_id,
+        vector=vector,
+        source_id=source_id,
+        k=k,
+        table=table,
+        where=where,
+        include_neighbors=include_neighbors,
+        depth=depth,
+        relation=relation,
+        include_vector=include_vector,
+    )
