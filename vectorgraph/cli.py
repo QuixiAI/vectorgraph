@@ -148,12 +148,22 @@ def build_parser() -> argparse.ArgumentParser:
     demo = sub.add_parser("demo", help="Copy demo example into the current directory")
     demo.set_defaults(func="demo")
 
+    mcp = sub.add_parser("mcp", help="Run the MCP stdio server")
+    mcp.set_defaults(func="mcp")
+
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # MCP server does not require Docker; run and exit.
+    if args.func == "mcp":
+        from vectorgraph.mcp_server import main as mcp_main
+
+        mcp_main()
+        return
 
     docker_bin = ensure_docker()
     compose_cmd = ensure_compose(docker_bin)

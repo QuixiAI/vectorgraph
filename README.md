@@ -63,6 +63,7 @@ If you want the source and tests locally:
 - `tests/` — async end-to-end tests for graph and vector paths.
 - `pyproject.toml` — package metadata (dependencies via pip/uv/pdm) and CLI entrypoint.
 - `vectorgraph/stack/` — packaged `docker-compose.yml`, `Dockerfile`, `schema.sql` used by the CLI.
+- `vectorgraph-mcp.py` — MCP stdio server exposing VectorGraph tools (for Claude Desktop or other MCP clients).
 
 ## Environment
 Defaults are baked into the stack; you normally don’t need to touch `.env`. If a `.env` exists in your project root, `vectorgraph up` will copy it into its cache and use it; otherwise it uses the packaged defaults. The embedding container sits on a private Docker network (no host port) and is reachable from Postgres at `http://embeddings:80`.
@@ -72,6 +73,32 @@ Defaults are baked into the stack; you normally don’t need to touch `.env`. If
 - run Python code using the helpers (or `vectorgraph demo` then `python demo.py`)
 - `pytest -q` to sanity check
 - `vectorgraph down` when done
+
+## MCP server (Claude Desktop)
+- Ensure the stack is running (`vectorgraph up`) and your env vars point at it if customized.
+- Start the server: `vectorgraph mcp` (stdio MCP server; alternatively `python -m vectorgraph.mcp_server`).
+- Configure Claude Desktop to point at this server; exposed tools include `create_db`, `delete_db`, graph helpers (`graph_create_entity`, `graph_get_entity`, `graph_create_relationship`, `graph_neighbors`, `graph_similarity`), and vector helpers (`vector_add`, `vector_get`, `vector_nearest_neighbors`, `vector_query_by_id`).
+- Example Claude Desktop snippet:
+  - Create an MCP server entry named `vectorgraph` with command `vectorgraph mcp` (no args). Leave env empty unless you need custom `POSTGRES_*`.
+  - Ask Claude: “Use vectorgraph to create a DB, add an entity id='n1' name='Hello', add a vector [0.1]*768 with metadata {'tag':'demo'}, then fetch nearest neighbors for [0.1]*768.” Claude will call `create_db`, `graph_create_entity`, `vector_add`, and `vector_nearest_neighbors` through the MCP tools.
+- Example JSON config snippet for Claude Desktop:
+  ```json
+  {
+    "mcpServers": {
+      "vectorgraph": {
+        "command": "vectorgraph",
+        "args": ["mcp"],
+        "env": {
+          "POSTGRES_HOST": "127.0.0.1",
+          "POSTGRES_PORT": "5432",
+          "POSTGRES_USER": "vg_user",
+          "POSTGRES_PASSWORD": "vg_password",
+          "POSTGRES_DB": "vg_db"
+        }
+      }
+    }
+  }
+  ```
 
 ## Notes
 - Vectors are fixed at 768-dim; the TEI model (`unsloth/embeddinggemma-300m`) matches that.
