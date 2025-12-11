@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import os
 import shutil
 import subprocess
@@ -162,7 +163,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.func == "mcp":
         from vectorgraph.mcp_server import main as mcp_main
 
-        mcp_main()
+        asyncio.run(mcp_main())
         return
 
     docker_bin = ensure_docker()

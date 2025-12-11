@@ -1,12 +1,14 @@
 """Minimal MCP server exposing VectorGraph helpers."""
 import asyncio
 import json
+from importlib.metadata import version, PackageNotFoundError
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from mcp.server import Server
+from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import ServerCapabilities, Tool, ToolsCapability, TextContent
 
 from vectorgraph import (
     create_db,
@@ -17,6 +19,8 @@ from vectorgraph import (
     graph_neighbors,
     graph_similarity,
     vector_add,
+    vector_batch_add,
+    vector_batch_delete,
     vector_get,
     vector_nearest_neighbors,
     vector_query_by_id,
@@ -184,6 +188,45 @@ TOOLS: List[Tool] = [
             "additionalProperties": False,
         },
     ),
+    _tool(
+        "vector_batch_add",
+        "Insert or upsert multiple vectors.",
+        {
+            "type": "object",
+            "properties": {
+                "db_id": {"type": "string"},
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "vector": {"type": "array", "items": {"type": "number"}, "minItems": 768, "maxItems": 768},
+                            "metadata": {"type": "object"},
+                        },
+                        "required": ["vector"],
+                        "additionalProperties": False,
+                    },
+                },
+                "upsert": {"type": "boolean", "default": False},
+            },
+            "required": ["db_id", "items"],
+            "additionalProperties": False,
+        },
+    ),
+    _tool(
+        "vector_batch_delete",
+        "Delete multiple vectors by id.",
+        {
+            "type": "object",
+            "properties": {
+                "db_id": {"type": "string"},
+                "ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["db_id", "ids"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -262,6 +305,17 @@ async def _dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             metadata_filter=args.get("metadata_filter"),
             include_vector=args.get("include_vector", False),
         )
+    if name == "vector_batch_add":
+        return await vector_batch_add(
+            _require(args, "db_id", name),
+            _require(args, "items", name),
+            upsert=args.get("upsert", False),
+        )
+    if name == "vector_batch_delete":
+        return await vector_batch_delete(
+            _require(args, "db_id", name),
+            _require(args, "ids", name),
+        )
     raise ValueError(f"Unknown tool '{name}'")
 
 
@@ -282,8 +336,19 @@ async def call_tool(name: str, arguments: Dict[str, Any]):
 
 async def main():
     # Run MCP server over stdio
-    transport = stdio_server()
-    await server.run(transport)
+    try:
+        server_version = version("vectorgraph")
+    except PackageNotFoundError:  # pragma: no cover - local dev
+        server_version = "dev"
+
+    init_opts = InitializationOptions(
+        server_name="vectorgraph-mcp",
+        server_version=server_version,
+        capabilities=ServerCapabilities(tools=ToolsCapability()),
+    )
+
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, init_opts)
 
 
 if __name__ == "__main__":

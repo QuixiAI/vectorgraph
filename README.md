@@ -77,7 +77,7 @@ Defaults are baked into the stack; you normally don’t need to touch `.env`. If
 ## MCP server (Claude Desktop)
 - Ensure the stack is running (`vectorgraph up`) and your env vars point at it if customized.
 - Start the server: `vectorgraph mcp` (stdio MCP server; alternatively `python -m vectorgraph.mcp_server`).
-- Configure Claude Desktop to point at this server; exposed tools include `create_db`, `delete_db`, graph helpers (`graph_create_entity`, `graph_get_entity`, `graph_create_relationship`, `graph_neighbors`, `graph_similarity`), and vector helpers (`vector_add`, `vector_get`, `vector_nearest_neighbors`, `vector_query_by_id`).
+- Configure Claude Desktop to point at this server; exposed tools include `create_db`, `delete_db`, graph helpers (`graph_create_entity`, `graph_get_entity`, `graph_create_relationship`, `graph_neighbors`, `graph_similarity`), and vector helpers (`vector_add`, `vector_get`, `vector_nearest_neighbors`, `vector_query_by_id`, `vector_batch_add`, `vector_batch_delete`).
 - Example Claude Desktop snippet:
   - Create an MCP server entry named `vectorgraph` with command `vectorgraph mcp` (no args). Leave env empty unless you need custom `POSTGRES_*`.
   - Ask Claude: “Use vectorgraph to create a DB, add an entity id='n1' name='Hello', add a vector [0.1]*768 with metadata {'tag':'demo'}, then fetch nearest neighbors for [0.1]*768.” Claude will call `create_db`, `graph_create_entity`, `vector_add`, and `vector_nearest_neighbors` through the MCP tools.
