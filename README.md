@@ -3,13 +3,13 @@
 A minimal, batteries-included PostgreSQL stack that pairs Apache AGE (graph) with pgvector. Spin it up with Docker, hit a couple of Python helpers, and you have graph + vector storage in one place.
 
 ## 60-second start
-1. Install: `pipx install .` (or `pip install .` in a venv)
+1. Install: `pip install vectorgraph` (or `pipx install vectorgraph`)
 2. Bring up services: `vectorgraph up` (Docker compose stack with graph/vector)
-3. Run tests: `pytest -q`
+3. Run tests: `pytest -q` (optional if you cloned)
 4. Tinker in Python (see below) or run `vectorgraph demo` then `python demo.py`.
 
 Install options:
-- `pipx install .` (recommended for CLI) or `pip install .` in a venv.
+- `pip install vectorgraph` (or `pipx install vectorgraph` for a global CLI).
 - CLI commands: `vectorgraph up`, `vectorgraph down`, `vectorgraph logs -f`, `vectorgraph ps`, `vectorgraph demo`.
   - Prefer async API for apps; sync helpers are available at `vectorgraph.sync` (see async/sync combined demo).
 
@@ -50,6 +50,12 @@ async def main():
 asyncio.run(main())
 ```
 Env vars respected by the helpers: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`. If you’re pointing at an existing stack, set these to your running Postgres/AGE instance.
+
+## Clone the repo (optional)
+If you want the source and tests locally:
+- Clone: `git clone https://github.com/QuixiAI/vectorgraph.git && cd vectorgraph`
+- Install editable: `pip install -e .`
+- Run tests: `pytest -q`
 
 ## Files
 - `db.py` — public async API for graph + vector helpers (AGE + pgvector).
