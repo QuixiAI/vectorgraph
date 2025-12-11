@@ -227,6 +227,30 @@ TOOLS: List[Tool] = [
             "additionalProperties": False,
         },
     ),
+    _tool(
+        "batch",
+        "Run multiple MCP tool calls sequentially.",
+        {
+            "type": "object",
+            "properties": {
+                "operations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "arguments": {"type": "object", "default": {}},
+                        },
+                        "required": ["name"],
+                        "additionalProperties": False,
+                    },
+                },
+                "continue_on_error": {"type": "boolean", "default": False},
+            },
+            "required": ["operations"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -316,6 +340,24 @@ async def _dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             _require(args, "db_id", name),
             _require(args, "ids", name),
         )
+    if name == "batch":
+        operations = _require(args, "operations", name) or []
+        continue_on_error = args.get("continue_on_error", False)
+        results = []
+        for op in operations:
+            op_name = op.get("name") if isinstance(op, dict) else None
+            op_args = op.get("arguments") if isinstance(op, dict) else {}
+            try:
+                if not isinstance(op_name, str):
+                    raise ValueError("operation.name must be a string")
+                result = await _dispatch_tool(op_name, op_args or {})
+                results.append({"name": op_name, "result": result})
+            except Exception as exc:
+                error_payload = {"name": op_name or "<unknown>", "error": str(exc)}
+                results.append(error_payload)
+                if not continue_on_error:
+                    raise
+        return results
     raise ValueError(f"Unknown tool '{name}'")
 
 
