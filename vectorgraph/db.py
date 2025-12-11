@@ -12,9 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Use env-driven connection details so compose/.env values are honored
-DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-DB_NAME = os.getenv("POSTGRES_DB", "postgres")
+# Defaults mirror the packaged Docker stack (see docker-compose.yml/.env.example).
+DB_USER = os.getenv("POSTGRES_USER", "vg_user")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "vg_password")
+DB_NAME = os.getenv("POSTGRES_DB", "vg_db")
 DB_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DB_DSN = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

@@ -13,9 +13,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-DB_NAME = os.getenv("POSTGRES_DB", "postgres")
+# Mirror packaged stack defaults so tests align with `vectorgraph up`.
+DB_USER = os.getenv("POSTGRES_USER", "vg_user")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "vg_password")
+DB_NAME = os.getenv("POSTGRES_DB", "vg_db")
 DB_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DB_DSN = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

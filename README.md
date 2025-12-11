@@ -46,7 +46,7 @@ vg.vector_add(db_id, "id1", [0.1]*768, {"tag": "demo"})
 print(vg.vector_nearest_neighbors(db_id, [0.1]*768, k=1))
 vg.delete_db(db_id)
 ```
-Env vars respected by the helpers: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`. If you’re pointing at an existing stack, set these to your running Postgres/AGE instance.
+Env vars respected by the helpers: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`. If you’re pointing at an existing stack, set these to your running Postgres/AGE instance. Defaults match the bundled compose stack: `POSTGRES_USER=vg_user`, `POSTGRES_PASSWORD=vg_password`, `POSTGRES_DB=vg_db`, `POSTGRES_HOST=127.0.0.1`, `POSTGRES_PORT=5432`.
 
 ## Clone the repo (optional)
 If you want the source and tests locally:
